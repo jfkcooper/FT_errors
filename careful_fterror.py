@@ -1,8 +1,11 @@
+""" Careful version """
+
 import numpy as np
 import matplotlib.pyplot as plt
 
 x = np.linspace(0, 1, 1001)
-xi = np.linspace(0.0, 20.0, 1000)
+n_xi = 1000
+xi = np.linspace(0.0, 20.0, n_xi)
 
 # Data with frequencies of 4 and 10 inverse x periods
 data = np.sin(2*np.pi*4*x) + np.sin(2*np.pi*10*x)
@@ -16,35 +19,36 @@ covariance = np.diag(variance)
 # Main calculation of fourier transform with errors
 #
 
-ft_matrix = np.exp(-2j*np.pi * x.reshape(1, -1) * xi.reshape(-1, 1))
+x_xi = 2 *np.pi * x.reshape(1, -1) * xi.reshape(-1, 1)
+
+ft_matrix = np.concatenate((np.cos(x_xi), np.sin(x_xi)))
 ft_data = ft_matrix @ data
 ft_covariance = ft_matrix @ covariance @ ft_matrix.T
 
+plt.figure("Covariance between real and imaginary components - not negligible")
+plt.imshow(ft_covariance)
 
-#
-# End of actual calculation of fourier transform error stuff, the rest
-# is just about power and plotting, a bit more fiddly
-#
 
-# Didn't write this down, but we're going plot the power spectrum here,
-# so there is an extra step to propagate from f(xi) -> |f(xi)|^2 = y
-# We need to be a bit careful here, because this function is not actually
-# analytic. Bodge it until checked.
-#
-
-ft_power = ft_data.real**2 + ft_data.imag**2
+ft_power = ft_data[:n_xi]**2 + ft_data[n_xi:]**2
 
 # Dubious assumption, we can treat real an imaginary parts separately
 
-sq_jac_real = 2*np.diag(ft_data.real)
-sq_jac_imag = 2*np.diag(ft_data.imag)
+sq_jac = 2*np.diag(ft_data)
+ft_sq_covariance = sq_jac @ ft_covariance @ sq_jac.T
 
-ft_sq_covariance_real = sq_jac_real @ ft_covariance.real @ sq_jac_real.T
-ft_sq_covariance_imag = sq_jac_imag @ ft_covariance.imag @ sq_jac_imag.T
+plt.figure("Square covariance")
+plt.imshow(ft_sq_covariance)
 
-ft_power_covariance = ft_sq_covariance_real + ft_sq_covariance_imag
+ft_power_covariance = ft_sq_covariance[:n_xi, :n_xi] + \
+                      ft_sq_covariance[n_xi:, n_xi:] + \
+                      ft_sq_covariance[:n_xi, n_xi:] + \
+                      ft_sq_covariance[n_xi:, :n_xi]
 
-ft_power_variance = np.diag(np.abs(ft_power_covariance)) # clearly dodgy
+plt.figure("Power covariance")
+plt.imshow(ft_power_covariance)
+
+
+ft_power_variance = np.diag(ft_power_covariance) # clearly dodgy
 
 #
 # Plots
